@@ -15,7 +15,7 @@ public class HandlerSetPlayerInfoCsReq : Handler
         var req = SetPlayerInfoCsReq.Parser.ParseFrom(data);
         if (req == null) return;
         player.Data.Name = req.Nickname;
-        if (req.Gender == Gender.None || player.Data.IsGenderSet)
+        if (req.Gender == Gender.None)
         {
             await connection.SendPacket(new PacketSetPlayerInfoScRsp(player, req.IsModify));
             await connection.SendPacket(new PacketPlayerSyncScNotify(player.ToProto()));
