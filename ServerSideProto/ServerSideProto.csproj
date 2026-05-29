@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>March7thHoney.Proto.ServerSide</RootNamespace>
     <AssemblyName>March7thHoney.ServerSideProto</AssemblyName>
+    <NoWarn>CS8600;CS8601;CS8602;CS8603;CS8604;CS8618</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
