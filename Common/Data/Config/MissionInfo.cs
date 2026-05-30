@@ -40,6 +40,23 @@ public class SubMissionInfo
     public int Progress { get; set; }
     public List<int>? GroupIDList { get; set; } = [];
     public int SubRewardID { get; set; }
+    public string WayPointType { get; set; } = "";
+    public int WayPointFloorID { get; set; }
+    public int WayPointGroupID { get; set; }
+    public int WayPointEntityID { get; set; }
+
+    public IEnumerable<int> GetAutoLoadGroupIds()
+    {
+        foreach (var groupId in GroupIDList ?? [])
+            if (groupId > 0)
+                yield return groupId;
+
+        if (FinishType == MissionFinishTypeEnum.KillMonster && ParamInt1 > 0)
+            yield return ParamInt1;
+
+        if (WayPointType == "Monster" && WayPointGroupID > 0)
+            yield return WayPointGroupID;
+    }
 }
 
 public class CustomValueInfo

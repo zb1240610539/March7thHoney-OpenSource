@@ -186,10 +186,8 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
         if (SkipSubMissionList.Contains(missionId)) await FinishSubMission(missionId);
 
-        if (mission.SubMissionInfo?.LevelFloorID == Player.SceneInstance?.FloorId)
-            if (mission.SubMissionInfo?.GroupIDList != null)
-                foreach (var group in mission.SubMissionInfo.GroupIDList)
-                    await Player.SceneInstance!.EntityLoader!.LoadGroup(group);
+        if (sendPacket)
+            await LoadSubMissionAutoGroups(mission.SubMissionInfo, true);
 
         
         Player.TaskManager?.MissionTaskTrigger.TriggerMissionTask(missionId);
@@ -256,6 +254,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         });
 
         
+        var acceptedSubMissions = new List<SubMissionInfo>();
         foreach (var nextMission in mainMission.MissionInfo?.SubMissionList ?? [])
         {
             if (nextMission.TakeType != SubMissionTakeTypeEnum.AnySequence &&
@@ -279,15 +278,20 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
             {
                 var s = await AcceptSubMission(nextMission.ID, false, false);
                 if (s != null)
+                {
                     sync.MissionList.Add(new Proto.Mission
                     {
                         Id = (uint)nextMission.ID,
                         Status = MissionStatus.MissionDoing
                     });
+                    acceptedSubMissions.Add(nextMission);
+                }
             }
         }
 
         await Player.SendPacket(new PacketPlayerSyncScNotify(sync));
+        foreach (var acceptedSubMission in acceptedSubMissions)
+            await LoadSubMissionAutoGroups(acceptedSubMission, true);
         await Player.SendPacket(new PacketStartFinishSubMissionScNotify(missionId));
         await Player.SendPacket(new PacketFinishedMissionScNotify(missionId));
 
@@ -331,6 +335,18 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         
 
         PluginEvent.InvokeOnPlayerFinishSubMission(Player, missionId);
+    }
+
+    private async ValueTask LoadSubMissionAutoGroups(SubMissionInfo? subMissionInfo, bool refreshExisting = false)
+    {
+        var scene = Player.SceneInstance;
+        if (subMissionInfo == null || subMissionInfo.LevelFloorID != scene?.FloorId) return;
+
+        foreach (var group in subMissionInfo.GetAutoLoadGroupIds().Distinct())
+            if (refreshExisting)
+                await scene.EntityLoader!.RefreshGroup(group);
+            else
+                await scene.EntityLoader!.LoadGroup(group);
     }
 
     public async ValueTask HandleFinishAction(MissionInfo info, int subMissionId)
@@ -646,8 +662,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
             if (info.LevelFloorID == Player.SceneInstance?.FloorId)
             {
-                if (info.GroupIDList == null) continue;
-                foreach (var group in info.GroupIDList)
+                foreach (var group in info.GetAutoLoadGroupIds().Distinct())
                     await Player.SceneInstance.EntityLoader!.LoadGroup(group, false);
             }
         }

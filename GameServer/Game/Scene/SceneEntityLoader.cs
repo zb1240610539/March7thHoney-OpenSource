@@ -219,7 +219,15 @@ public class SceneEntityLoader(SceneInstance scene)
     {
         var group = Scene.FloorInfo?.Groups.TryGetValue(groupId, out var v1) == true ? v1 : null;
         if (group == null) return null;
+        if (!LoadGroups.Contains(groupId)) LoadGroups.Add(groupId);
+
         var entities = await LoadGroup(group, true);
+
+        if (entities == null)
+        {
+            entities = Scene.Entities.Values.Where(entity => entity.GroupId == groupId).ToList();
+            if (entities.Count == 0) return null;
+        }
 
         if (sendPacket && entities is { Count: > 0 })
             await Scene.Player.SendPacket(new PacketSceneGroupRefreshScNotify(Scene.Player, entities));
@@ -227,7 +235,26 @@ public class SceneEntityLoader(SceneInstance scene)
         return entities;
     }
 
-    public virtual async ValueTask UnloadGroup(int groupId)
+    public virtual async ValueTask<List<BaseGameEntity>?> RefreshGroup(int groupId, bool sendPacket = true)
+    {
+        var group = Scene.FloorInfo?.Groups.TryGetValue(groupId, out var v1) == true ? v1 : null;
+        if (group == null) return null;
+
+        var removeList = Scene.Entities.Values.Where(entity => entity.GroupId == groupId).ToList();
+        foreach (var entity in removeList)
+            await Scene.RemoveEntity(entity, false);
+
+        Scene.Groups.Remove(groupId);
+        if (!LoadGroups.Contains(groupId)) LoadGroups.Add(groupId);
+
+        var addList = await LoadGroup(group, true);
+        if (sendPacket && (removeList.Count > 0 || addList is { Count: > 0 }))
+            await Scene.Player.SendPacket(new PacketSceneGroupRefreshScNotify(Scene.Player, addList ?? [], removeList));
+
+        return addList;
+    }
+
+    public virtual async ValueTask UnloadGroup(int groupId, bool sendPacket = true)
     {
         var group = Scene.FloorInfo?.Groups.TryGetValue(groupId, out var v1) == true ? v1 : null;
         if (group == null) return;
@@ -235,7 +262,7 @@ public class SceneEntityLoader(SceneInstance scene)
         var removeList = new List<BaseGameEntity>();
         var refreshed = false;
 
-        foreach (var entity in Scene.Entities.Values)
+        foreach (var entity in Scene.Entities.Values.Where(entity => entity.GroupId == group.Id).ToList())
             if (entity.GroupId == group.Id)
             {
                 await Scene.RemoveEntity(entity, false);
@@ -245,7 +272,7 @@ public class SceneEntityLoader(SceneInstance scene)
 
         Scene.Groups.Remove(group.Id);
 
-        if (refreshed)
+        if (sendPacket && refreshed)
             await Scene.Player.SendPacket(new PacketSceneGroupRefreshScNotify(Scene.Player, removeEntity: removeList));
     }
 
