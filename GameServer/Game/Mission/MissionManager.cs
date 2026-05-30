@@ -344,7 +344,13 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
         foreach (var group in subMissionInfo.GetAutoLoadGroupIds().Distinct())
             if (refreshExisting)
-                await scene.EntityLoader!.RefreshGroup(group);
+            {
+                var monsterInstId = subMissionInfo.GetAutoLoadMonsterInstId(group);
+                if (monsterInstId > 0)
+                    await scene.EntityLoader!.RefreshMonster(group, monsterInstId);
+                else
+                    await scene.EntityLoader!.RefreshGroup(group);
+            }
             else
                 await scene.EntityLoader!.LoadGroup(group);
     }

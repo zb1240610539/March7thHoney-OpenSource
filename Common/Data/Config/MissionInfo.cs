@@ -57,6 +57,17 @@ public class SubMissionInfo
         if (WayPointType == "Monster" && WayPointGroupID > 0)
             yield return WayPointGroupID;
     }
+
+    public int GetAutoLoadMonsterInstId(int groupId)
+    {
+        if (FinishType == MissionFinishTypeEnum.KillMonster && ParamInt1 == groupId && ParamInt2 > 0)
+            return ParamInt2;
+
+        if (WayPointType == "Monster" && WayPointGroupID == groupId && WayPointEntityID > 0)
+            return WayPointEntityID;
+
+        return 0;
+    }
 }
 
 public class CustomValueInfo

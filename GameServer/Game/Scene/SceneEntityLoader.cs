@@ -254,6 +254,32 @@ public class SceneEntityLoader(SceneInstance scene)
         return addList;
     }
 
+    public virtual async ValueTask<EntityMonster?> RefreshMonster(int groupId, int monsterInstId, bool sendPacket = true)
+    {
+        var group = Scene.FloorInfo?.Groups.TryGetValue(groupId, out var v1) == true ? v1 : null;
+        if (group == null) return null;
+
+        var monsterInfo = group.MonsterList.FirstOrDefault(monster => monster.ID == monsterInstId);
+        if (monsterInfo == null) return null;
+
+        var removeList = Scene.Entities.Values.Where(entity => entity.GroupId == groupId).ToList();
+        foreach (var entity in removeList)
+            await Scene.RemoveEntity(entity, false);
+
+        Scene.Groups.Remove(groupId);
+        if (!LoadGroups.Contains(groupId)) LoadGroups.Add(groupId);
+        Scene.Groups.Add(groupId);
+
+        var monsterEntity = await LoadMonster(monsterInfo, group);
+        if (sendPacket && (removeList.Count > 0 || monsterEntity != null))
+            await Scene.Player.SendPacket(new PacketSceneGroupRefreshScNotify(
+                Scene.Player,
+                monsterEntity == null ? [] : [monsterEntity],
+                removeList));
+
+        return monsterEntity;
+    }
+
     public virtual async ValueTask UnloadGroup(int groupId, bool sendPacket = true)
     {
         var group = Scene.FloorInfo?.Groups.TryGetValue(groupId, out var v1) == true ? v1 : null;
